@@ -1,0 +1,10 @@
+#!/bin/sh
+echo "Creating Template"
+gcloud beta compute --project=pe-training instance-templates create pe-rmm-template --machine-type=n1-standard-1 --network=projects/pe-training/global/networks/default --network-tier=PREMIUM --metadata=startup-script=\#\!/bin/sh$'\n'sudo\ apt-get\ update\ \&\&\ sudo\ apt-get\ install\ apache2\ -y$'\n'echo\ \'\<\!doctype\ html\>\<html\>\<
+body\>\<h1\>Hello\ World\!\</h1\>\</body\>\</html\>\'\ \|\ sudo\ tee\ /var/www/html/index.html --maintenance-policy=MIGRATE --service-account=912623308461-compute@developer.gserviceaccount.com --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append --tags=http-server,https-server --image=debian-9-stretch-v20180716 --image-project=debian-cloud --boot-disk-size=10GB --boot-disk-type=pd-standard --boot-disk-device-name=pe-rmm-template
+echo "Template Created\nCreating HealthCheck"
+gcloud compute --project "pe-training" http-health-checks create "pe-rmm-healthcheck" --port "80" --request-path "/" --check-interval "15" --timeout "15" --unhealthy-threshold "5" --healthy-threshold "3"
+echo "HeathCheck Created\nGroup Creating"
+gcloud beta compute --project "pe-training" instance-groups managed create "pe-rmm-group" --base-instance-name "pe-rmm-group" --template "pe-rmm-template" --size "1" --zones "us-east1-b,us-east1-c,us-east1-d" --http-health-check "pe-rmm-healthcheck"
+echo "Created Group\nAssigning AutoScaling"
+gcloud compute --project "pe-training" instance-groups managed set-autoscaling "pe-rmm-group" --region "us-east1" --cool-down-period "60" --max-num-replicas "10" --min-num-replicas "2" --target-cpu-utilization "0.6" 
